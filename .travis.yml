@@ -1,0 +1,17 @@
+language: go
+install:
+- go get -t ./...
+before_deploy:
+- make cross-build
+- make dist
+deploy:
+  provider: releases
+  api_key:
+    secure: NE5kWlMn29scaIapdUfBtO+IkjfnX5KxOkPG6SLdWkQkqB+6jfy8Dt9mAn6ECu1l8OoTru1ngOazS8RfDk4xU3kmCzlnrBGKkuDbVGZv/kMo/+lTu8rfjN0tjP7uN8Lbz3FswYrHVjtVHKIcaY6/tnnMjMpcYHzuaCq4fcQvl7z3Mz6bysqDh2p35Wj8Fa0iuzz1sAAkUqy7e9w7Aykd4OBOd/LiLQawMgZ9F9nIsOOUC6LBtzXI8Dpo4GGYTYD0od7yp9AJCjDhI4xb7yx0sT1oArqyadrsFmoTWt2+LT/od1yFXjeCqVxAKhZC0ZVQYK7Gwy8hXjY47FCjYuLSMCoK6Gud1KlgewlIkHFAYBu44Kh+8GXPmSph6GjtnuE2wsLnGk8HmW9AkiJPd/KHsiwKMNHzZc7quYBZQQ9QOEi+QutLZkUvTrgG1QAYF2wdxCZSpzw6ojBx/lq700BNxOAnrA3DXXKpF2tFq2qRWrOLMuD0+VBjUNIGw7RqXy9W4qg9qhGdCJD4aPh3q7E3n3Fi2TxKLoIvlAjpzc7k9/JgC0xKAwchYEvpETVI1fU+vnGJMX2vnItW9rScJ34YLv05vtFfRE02T1kYSofQLy0WU+XbiXrzxWrZbDef+6Nh0CaNRDIHnP9VDNEU1zz1TaFVgsNKgHMfl9CkeF0Kw3U=
+  skip_cleanup: true
+  overwrite: true
+  file_glob: true
+  file: dist/*.{tar.gz}
+  on:
+    repo: tzmfreedom/gocrawsan
+    tags: true
