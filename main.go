@@ -80,7 +80,9 @@ func crawling(c *cli.Context) error {
 
 func getUrl(wg *sync.WaitGroup, m *sync.Mutex, url string) {
 	client := &http.Client{}
-
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", useragent)
 
