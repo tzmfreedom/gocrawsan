@@ -1,0 +1,9 @@
+package: github.com/tzmfreedom/gocrawsan
+import:
+- package: github.com/BurntSushi/toml
+  version: v0.3.0
+- package: github.com/PuerkitoBio/goquery
+  version: v1.1.0
+- package: github.com/mitchellh/go-homedir
+- package: github.com/urfave/cli
+  version: v1.19.1
