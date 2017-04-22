@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/BurntSushi/toml"
 	_ "github.com/PuerkitoBio/goquery"
+	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli"
 )
@@ -58,7 +61,8 @@ func main() {
 }
 
 func crawling(c *cli.Context) error {
-	var wg sync.WaitGroup
+	wg := new(sync.WaitGroup)
+	m := new(sync.Mutex)
 	buf, err := ioutil.ReadFile(c.String("config"))
 	if err != nil {
 		return err
@@ -68,19 +72,35 @@ func crawling(c *cli.Context) error {
 
 	for _, url := range file.Urls {
 		wg.Add(1)
-		go getUrl(&wg, url)
+		go getUrl(wg, m, url)
 	}
 	wg.Wait()
 	return nil
 }
 
-func getUrl(wg *sync.WaitGroup, url string) {
+func getUrl(wg *sync.WaitGroup, m *sync.Mutex, url string) {
 	client := &http.Client{}
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", useragent)
 
 	resp, _ := client.Do(req)
-	fmt.Println(url + ": " + resp.Status)
+	status := strings.Split(resp.Status, " ")
+	code, _ := strconv.Atoi(status[0])
+
+	m.Lock()
+	defer m.Unlock()
+	fmt.Print(url + "\t")
+
+	switch code / 100 {
+	case 2:
+		color.Cyan(resp.Status)
+	case 3:
+		color.Yellow(resp.Status)
+	case 4:
+		color.Red(resp.Status)
+	default:
+		fmt.Println(resp.Status)
+	}
 	wg.Done()
 }
