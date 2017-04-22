@@ -1,6 +1,6 @@
 # Gocrawsan
 
-Simple web crewler with golang(WIP)
+Simple web crawler with golang(WIP)
 
 ## Install
 
