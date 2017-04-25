@@ -31,6 +31,7 @@ type configFile struct {
 type requestSetting struct {
 	url       string
 	useragent string
+	redirect  bool
 }
 
 func main() {
@@ -55,8 +56,11 @@ func main() {
 			Name: "useragent, U",
 		},
 		cli.StringFlag{
-			Name:  "config, C",
+			Name: "config, C",
 			Value: filepath.Join(dir, "config.toml"),
+		},
+		cli.BoolFlag{
+			Name: "redirect",
 		},
 		cli.BoolFlag{
 			Name: "debug, D",
@@ -86,17 +90,20 @@ func crawling(c *cli.Context) error {
 		s := &requestSetting{
 			url:       url,
 			useragent: ua,
+			redirect:  c.Bool("redirect"),
 		}
-		go getUrl(wg, m, s)
+		go getUrl(wg, m, s, 1)
 	}
 	wg.Wait()
 	return nil
 }
 
-func getUrl(wg *sync.WaitGroup, m *sync.Mutex, s *requestSetting) {
+func getUrl(wg *sync.WaitGroup, m *sync.Mutex, s *requestSetting, d int) {
 	client := &http.Client{}
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	if s.redirect {
+		client.CheckRedirect = func (req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
+		}
 	}
 	req, _ := http.NewRequest("GET", s.url, nil)
 	req.Header.Set("User-Agent", s.useragent)
@@ -104,6 +111,7 @@ func getUrl(wg *sync.WaitGroup, m *sync.Mutex, s *requestSetting) {
 	resp, _ := client.Do(req)
 	status := strings.Split(resp.Status, " ")
 	code, _ := strconv.Atoi(status[0])
+	d -= 1
 
 	m.Lock()
 	fmt.Print(s.url + "\t")
@@ -119,7 +127,9 @@ func getUrl(wg *sync.WaitGroup, m *sync.Mutex, s *requestSetting) {
 		fmt.Println(resp.Status)
 	}
 	m.Unlock()
-	_, _ := getLinks(resp)
+	if d > 0 {
+		_, _ = getLinks(resp)
+	}
 	wg.Done()
 }
 
