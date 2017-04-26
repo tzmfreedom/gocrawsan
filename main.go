@@ -28,12 +28,6 @@ type configFile struct {
 	UserAgent string   `toml:"useragent"`
 }
 
-type requestSetting struct {
-	url       string
-	useragent string
-	redirect  bool
-}
-
 func main() {
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Printf("version=%s revision=%s\n", c.App.Version, Revision)
@@ -60,7 +54,11 @@ func main() {
 			Value: filepath.Join(dir, "config.toml"),
 		},
 		cli.BoolFlag{
-			Name: "redirect",
+			Name: "no-redirect",
+		},
+		cli.IntFlag{
+			Name: "depth",
+      Value: 1,
 		},
 		cli.BoolFlag{
 			Name: "debug, D",
@@ -68,9 +66,9 @@ func main() {
 	}
 	app.Action = func (c *cli.Context) error {
 		cr := NewCrawler()
-		ua := c.String("useragent")
-		cr.useragent = ua
-		cr.redirect = c.Bool("redirect")
+		cr.useragent = c.String("useragent")
+		cr.noRedirect = c.Bool("no-redirect")
+		cr.depth = c.Int("depth")
 		buf, err := ioutil.ReadFile(c.String("config"))
 		if err != nil {
 			return err
@@ -90,7 +88,8 @@ type Crawler struct {
 	m *sync.Mutex
 	wg *sync.WaitGroup
 	useragent string
-	redirect bool
+	noRedirect bool
+  depth int
 }
 
 func NewCrawler() *Crawler {
@@ -104,7 +103,7 @@ func NewCrawler() *Crawler {
 func (c *Crawler) crawling(urls []string) error {
 	for _, url := range urls {
 		c.wg.Add(1)
-		go c.getUrl(url, c.printHttpStatus, 1)
+		go c.getUrl(url, c.printHttpStatus, c.depth)
 	}
 	c.wg.Wait()
 	return nil
@@ -112,9 +111,9 @@ func (c *Crawler) crawling(urls []string) error {
 
 func (c *Crawler) getUrl(url string, f func(string, *http.Response), d int) {
 	client := &http.Client{}
-	if c.redirect {
+	if c.noRedirect {
 		client.CheckRedirect = func (req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
+		  return http.ErrUseLastResponse
 		}
 	}
 	req, _ := http.NewRequest("GET", url, nil)
