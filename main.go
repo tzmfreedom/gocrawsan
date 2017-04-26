@@ -66,56 +66,72 @@ func main() {
 			Name: "debug, D",
 		},
 	}
-	app.Action = crawling
+	app.Action = func (c *cli.Context) error {
+		cr := NewCrawler()
+		ua := c.String("useragent")
+		cr.useragent = ua
+		cr.redirect = c.Bool("redirect")
+		buf, err := ioutil.ReadFile(c.String("config"))
+		if err != nil {
+			return err
+		}
+		file := &configFile{}
+		err = toml.Unmarshal(buf, file)
+		if err != nil {
+			return err
+		}
+		cr.crawling(file.Urls)
+		return nil
+	}
 	app.Run(os.Args)
 }
 
-func crawling(c *cli.Context) error {
-	wg := new(sync.WaitGroup)
-	m := new(sync.Mutex)
+type Crawler struct {
+	m *sync.Mutex
+	wg *sync.WaitGroup
+	useragent string
+	redirect bool
+}
 
-	ua := c.String("useragent")
-	buf, err := ioutil.ReadFile(c.String("config"))
-	if err != nil {
-		return err
+func NewCrawler() *Crawler {
+	c := &Crawler{
+		wg: new(sync.WaitGroup),
+		m: new(sync.Mutex),
 	}
-	file := &configFile{}
-	err = toml.Unmarshal(buf, file)
-	if err != nil {
-		return err
-	}
+	return c
+}
 
-	for _, url := range file.Urls {
-		wg.Add(1)
-		s := &requestSetting{
-			url:       url,
-			useragent: ua,
-			redirect:  c.Bool("redirect"),
-		}
-		go getUrl(wg, m, s, 1)
+func (c *Crawler) crawling(urls []string) error {
+	for _, url := range urls {
+		c.wg.Add(1)
+		go c.getUrl(url, c.printHttpStatus, 1)
 	}
-	wg.Wait()
+	c.wg.Wait()
 	return nil
 }
 
-func getUrl(wg *sync.WaitGroup, m *sync.Mutex, s *requestSetting, d int) {
+func (c *Crawler) getUrl(url string, f func(string, *http.Response), d int) {
 	client := &http.Client{}
-	if s.redirect {
+	if c.redirect {
 		client.CheckRedirect = func (req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 		}
 	}
-	req, _ := http.NewRequest("GET", s.url, nil)
-	req.Header.Set("User-Agent", s.useragent)
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("User-Agent", c.useragent)
 
 	resp, _ := client.Do(req)
+	d -= 1
+	f(url, resp)
+	c.accessToNext(resp, d)
+	c.wg.Done()
+}
+
+func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
+	c.m.Lock()
 	status := strings.Split(resp.Status, " ")
 	code, _ := strconv.Atoi(status[0])
-	d -= 1
-
-	m.Lock()
-	fmt.Print(s.url + "\t")
-
+	fmt.Print(url + "\t")
 	switch code / 100 {
 	case 2:
 		color.Cyan(resp.Status)
@@ -126,13 +142,20 @@ func getUrl(wg *sync.WaitGroup, m *sync.Mutex, s *requestSetting, d int) {
 	default:
 		fmt.Println(resp.Status)
 	}
-	m.Unlock()
-	if d > 0 {
-		_, _ = getLinks(resp)
-	}
-	wg.Done()
+	c.m.Unlock()
 }
 
+func (c *Crawler) accessToNext(resp *http.Response, d int) {
+	if d > 0 {
+		links, err := getLinks(resp)
+    if err == nil {
+      for _, link := range links {
+        c.wg.Add(1)
+        go c.getUrl(link, c.printHttpStatus, d)
+      }
+    }
+	}
+}
 func getLinks(res *http.Response) ([]string, error) {
 	urls := []string{}
 	doc, _ := goquery.NewDocumentFromResponse(res)
