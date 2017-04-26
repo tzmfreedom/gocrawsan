@@ -32,14 +32,6 @@ func main() {
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Printf("version=%s revision=%s\n", c.App.Version, Revision)
 	}
-	home, err := homedir.Dir()
-	if err != nil {
-		return
-	}
-	dir := filepath.Join(home, ".config", "gocrawsan")
-	if err = os.MkdirAll(dir, 0700); err != nil {
-		return
-	}
 	app := cli.NewApp()
 	app.Name = "gocrawsan"
 	app.Usage = "web crawling command utility"
@@ -50,8 +42,7 @@ func main() {
 			Name: "useragent, U",
 		},
 		cli.StringFlag{
-			Name:  "config, C",
-			Value: filepath.Join(dir, "config.toml"),
+			Name: "config, C",
 		},
 		cli.BoolFlag{
 			Name: "no-redirect",
@@ -65,11 +56,23 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) error {
+		var config string
+		var err error
+		if c.String("config") == "" {
+			config, err = createConfigFile()
+			if err != nil {
+				return err
+			}
+		} else {
+			config = c.String("config")
+		}
+
 		cr := NewCrawler()
 		cr.useragent = c.String("useragent")
 		cr.noRedirect = c.Bool("no-redirect")
 		cr.depth = c.Int("depth")
-		buf, err := ioutil.ReadFile(c.String("config"))
+
+		buf, err := ioutil.ReadFile(config)
 		if err != nil {
 			return err
 		}
@@ -167,4 +170,29 @@ func getLinks(res *http.Response) ([]string, error) {
 		urls = append(urls, url)
 	})
 	return urls, nil
+}
+
+func createConfigFile() (string, error) {
+	dir, err := configDir()
+	if err != nil {
+		return "", err
+	}
+	if err = os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	config := filepath.Join(dir, "config.toml")
+	if _, err := os.Stat(config); err != nil {
+		fmt.Println("create " + config)
+		ioutil.WriteFile(config, []byte("urls = [\"https://example.com\"]"), 0644)
+	}
+	return config, nil
+}
+
+func configDir() (string, error) {
+	home, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".config", "gocrawsan")
+	return dir, nil
 }
