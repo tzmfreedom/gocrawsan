@@ -50,21 +50,21 @@ func main() {
 			Name: "useragent, U",
 		},
 		cli.StringFlag{
-			Name: "config, C",
+			Name:  "config, C",
 			Value: filepath.Join(dir, "config.toml"),
 		},
 		cli.BoolFlag{
 			Name: "no-redirect",
 		},
 		cli.IntFlag{
-			Name: "depth",
-      Value: 1,
+			Name:  "depth",
+			Value: 1,
 		},
 		cli.BoolFlag{
 			Name: "debug, D",
 		},
 	}
-	app.Action = func (c *cli.Context) error {
+	app.Action = func(c *cli.Context) error {
 		cr := NewCrawler()
 		cr.useragent = c.String("useragent")
 		cr.noRedirect = c.Bool("no-redirect")
@@ -85,17 +85,17 @@ func main() {
 }
 
 type Crawler struct {
-	m *sync.Mutex
-	wg *sync.WaitGroup
-	useragent string
+	m          *sync.Mutex
+	wg         *sync.WaitGroup
+	useragent  string
 	noRedirect bool
-  depth int
+	depth      int
 }
 
 func NewCrawler() *Crawler {
 	c := &Crawler{
 		wg: new(sync.WaitGroup),
-		m: new(sync.Mutex),
+		m:  new(sync.Mutex),
 	}
 	return c
 }
@@ -112,8 +112,8 @@ func (c *Crawler) crawling(urls []string) error {
 func (c *Crawler) getUrl(url string, f func(string, *http.Response), d int) {
 	client := &http.Client{}
 	if c.noRedirect {
-		client.CheckRedirect = func (req *http.Request, via []*http.Request) error {
-		  return http.ErrUseLastResponse
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
 		}
 	}
 	req, _ := http.NewRequest("GET", url, nil)
@@ -147,12 +147,12 @@ func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
 func (c *Crawler) accessToNext(resp *http.Response, d int) {
 	if d > 0 {
 		links, err := getLinks(resp)
-    if err == nil {
-      for _, link := range links {
-        c.wg.Add(1)
-        go c.getUrl(link, c.printHttpStatus, d)
-      }
-    }
+		if err == nil {
+			for _, link := range links {
+				c.wg.Add(1)
+				go c.getUrl(link, c.printHttpStatus, d)
+			}
+		}
 	}
 }
 func getLinks(res *http.Response) ([]string, error) {
