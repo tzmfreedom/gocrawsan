@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"bufio"
 
 	"github.com/BurntSushi/toml"
 	"github.com/PuerkitoBio/goquery"
@@ -201,8 +202,15 @@ func createConfigFile() (string, error) {
 	}
 	config := filepath.Join(dir, "config.toml")
 	if _, err := os.Stat(config); err != nil {
-		fmt.Println("create " + config)
-		ioutil.WriteFile(config, []byte("urls = [\"https://example.com\"]"), 0644)
+		reader := bufio.NewReader(os.Stdin)
+
+		fmt.Println("Do you create configfile in " + config + "?(y/N): ")
+		answer, _ := reader.ReadString('\n')
+		if answer == "y" || answer == "Y" {
+			fmt.Println("Input your sample url: ")
+			url, _ := reader.ReadString('\n')
+			ioutil.WriteFile(config, []byte("urls = [\"" + url + "\"]"), 0644)
+		}
 	}
 	return config, nil
 }
