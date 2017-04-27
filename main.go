@@ -69,8 +69,13 @@ func main() {
 
 		cr := NewCrawler()
 		cr.useragent = c.String("useragent")
-		cr.noRedirect = c.Bool("no-redirect")
-		cr.depth = c.Int("depth")
+		client := &http.Client{}
+		if c.Bool("no-redirect") {
+			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+		}
+		cr.client = client
 
 		buf, err := ioutil.ReadFile(config)
 		if err != nil {
@@ -81,51 +86,54 @@ func main() {
 		if err != nil {
 			return err
 		}
-		cr.crawling(file.Urls)
+		cr.crawling(file.Urls, c.Int("depth"))
 		return nil
 	}
 	app.Run(os.Args)
 }
 
 type Crawler struct {
-	m          *sync.Mutex
-	wg         *sync.WaitGroup
-	useragent  string
-	noRedirect bool
-	depth      int
+	m            *sync.Mutex
+	wg           *sync.WaitGroup
+	useragent    string
+	client       *http.Client
+	accessedUrls map[string]struct{}
 }
 
 func NewCrawler() *Crawler {
 	c := &Crawler{
 		wg: new(sync.WaitGroup),
 		m:  new(sync.Mutex),
+		accessedUrls: make(map[string]struct{}),
 	}
 	return c
 }
 
-func (c *Crawler) crawling(urls []string) error {
+func (c *Crawler) crawling(urls []string, depth int) error {
 	for _, url := range urls {
+		c.m.Lock()
+		if _, ok := c.accessedUrls[url]; ok {
+			c.m.Unlock()
+			continue
+		}
+		c.accessedUrls[url] = struct{}{}
+		c.m.Unlock()
+
 		c.wg.Add(1)
-		go c.getUrl(url, c.printHttpStatus, c.depth)
+		go c.getUrl(url, c.printHttpStatus, depth)
 	}
 	c.wg.Wait()
 	return nil
 }
 
 func (c *Crawler) getUrl(url string, f func(string, *http.Response), d int) {
-	client := &http.Client{}
-	if c.noRedirect {
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", c.useragent)
+	resp, _ := c.client.Do(req)
 
-	resp, _ := client.Do(req)
 	d -= 1
 	f(url, resp)
-	c.accessToNext(resp, d)
+	c.accessToNext(resp, f, d)
 	c.wg.Done()
 }
 
@@ -147,17 +155,28 @@ func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
 	c.m.Unlock()
 }
 
-func (c *Crawler) accessToNext(resp *http.Response, d int) {
-	if d > 0 {
-		links, err := getLinks(resp)
-		if err == nil {
-			for _, link := range links {
-				c.wg.Add(1)
-				go c.getUrl(link, c.printHttpStatus, d)
-			}
-		}
+func (c *Crawler) accessToNext(resp *http.Response, f func(string, *http.Response), d int) error {
+	if d <= 0 {
+		return nil
 	}
+	links, err := getLinks(resp)
+	if err != nil {
+		return err
+	}
+	for _, link := range links {
+		c.m.Lock()
+		if _, ok := c.accessedUrls[link]; ok {
+			c.m.Unlock()
+			continue
+		}
+		c.accessedUrls[link] = struct{}{}
+		c.m.Unlock()
+		c.wg.Add(1)
+		go c.getUrl(link, f, d)
+	}
+	return nil
 }
+
 func getLinks(res *http.Response) ([]string, error) {
 	urls := []string{}
 	doc, _ := goquery.NewDocumentFromResponse(res)
