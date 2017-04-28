@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"bufio"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/PuerkitoBio/goquery"
@@ -49,6 +50,9 @@ func main() {
 			Name: "no-redirect",
 		},
 		cli.IntFlag{
+			Name: "timeout",
+		},
+		cli.IntFlag{
 			Name:  "depth",
 			Value: 1,
 		},
@@ -71,6 +75,7 @@ func main() {
 		cr := NewCrawler()
 		cr.useragent = c.String("useragent")
 		client := &http.Client{}
+		client.Timeout = time.Duration(time.Duration(c.Int("timeout")) * time.Second)
 		if c.Bool("no-redirect") {
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
@@ -88,6 +93,9 @@ func main() {
 			return err
 		}
 		cr.crawling(file.Urls, c.Int("depth"))
+		if len(cr.errors) > 0 {
+			return cr.errors[0]
+		}
 		return nil
 	}
 	app.Run(os.Args)
@@ -99,6 +107,7 @@ type Crawler struct {
 	useragent    string
 	client       *http.Client
 	accessedUrls map[string]struct{}
+	errors       []error
 }
 
 func NewCrawler() *Crawler {
@@ -106,11 +115,12 @@ func NewCrawler() *Crawler {
 		wg: new(sync.WaitGroup),
 		m:  new(sync.Mutex),
 		accessedUrls: make(map[string]struct{}),
+		errors: []error{},
 	}
 	return c
 }
 
-func (c *Crawler) crawling(urls []string, depth int) error {
+func (c *Crawler) crawling(urls []string, depth int) {
 	for _, url := range urls {
 		c.m.Lock()
 		if _, ok := c.accessedUrls[url]; ok {
@@ -124,18 +134,20 @@ func (c *Crawler) crawling(urls []string, depth int) error {
 		go c.getUrl(url, c.printHttpStatus, depth)
 	}
 	c.wg.Wait()
-	return nil
 }
 
 func (c *Crawler) getUrl(url string, f func(string, *http.Response), d int) {
+	defer c.wg.Done()
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", c.useragent)
-	resp, _ := c.client.Do(req)
-
+	resp, err := c.client.Do(req)
+	if err != nil {
+		c.errors = append(c.errors, err)
+		return
+	}
 	d -= 1
 	f(url, resp)
 	c.accessToNext(resp, f, d)
-	c.wg.Done()
 }
 
 func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
