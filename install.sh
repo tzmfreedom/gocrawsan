@@ -2,7 +2,8 @@
 
 NAME="gocrawsan"
 VERSION="0.1.0"
-PREFIX="/usr/local"
+BIN_PREFIX="/usr/local"
+COMP_PREFIX="/usr/local/share/zsh/site-functions"
 GITHUB_USER="tzmfreedom"
 TMP_DIR="/tmp"
 
@@ -48,7 +49,15 @@ cd $TMP_DIR
 curl -sL -O ${BINARY}
 
 tar xzf ${ARCHIVE_FILE}
-mv ${OS}-${ARCH}/${NAME} ${PREFIX}/bin/${NAME}
+mv ${OS}-${ARCH}/${NAME} ${BIN_PREFIX}/bin/${NAME}
 chmod +x ${PREFIX}/bin/${NAME}
+if [ -d ${COMP_PREFIX} ]; then
+  echo "install zsh completion?(y/N): "
+  read ln;
+  if [ "${ln}" == "y" ]; then
+    mv ${OS}-${ARCH}/_${NAME} ${COMP_PREFIX}/_${NAME}
+  fi
+fi
+
 rm -rf ${OS}-${ARCH}
 rm -rf ${ARCHIVE_FILE}
