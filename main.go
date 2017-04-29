@@ -235,13 +235,13 @@ func getLinks(res *http.Response) ([]string, error) {
 	return urls, nil
 }
 
-func createConfigFile() error {
+func createConfigFile() (string, error) {
 	dir, err := configDir()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err = os.MkdirAll(dir, 0700); err != nil {
-		return err
+		return "", err
 	}
 	config := filepath.Join(dir, "config.toml")
 	if _, err := os.Stat(config); err != nil {
@@ -252,12 +252,12 @@ func createConfigFile() error {
 		if answer == "y" || answer == "Y" {
 			err = ioutil.WriteFile(config, []byte("urls = [\"https://example.com\"]"), 0644)
 			if err != nil {
-				return err
+				return "", err
 			}
 			fmt.Println("successful to create config file.")
 		}
 	}
-	return nil
+	return config, nil
 }
 
 func configDir() (string, error) {
@@ -285,10 +285,13 @@ func readOrCreateConfigFile(c *cli.Context) (*configFile, error) {
 	var config string
 	var err error
 	if c.String("config") == "" {
-		if err = createConfigFile(); err != nil {
+		config, err = createConfigFile()
+		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		if config == "" {
+			return nil, nil
+		}
 	} else {
 		config = c.String("config")
 	}
@@ -309,7 +312,7 @@ func validate(c *cli.Context) error {
 		"text": true,
 		"attr": true,
 	}
-	if pickType[c.String("pick-type")] {
+	if c.String("pick-type") != "" && !pickType[c.String("pick-type")] {
 		return errors.New("Invalid pick-type. please set 'text' or 'attr'")
 	}
 	if c.String("selector") != "" && c.String("pick-type") == "" {
@@ -320,3 +323,4 @@ func validate(c *cli.Context) error {
 	}
 	return nil
 }
+
