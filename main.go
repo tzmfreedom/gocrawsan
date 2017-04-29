@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"bufio"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -73,6 +74,10 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) error {
+		err := validate(c)
+		if err != nil {
+			return err
+		}
 		cr := NewCrawler()
 		cr.useragent = c.String("useragent")
 		client := &http.Client{}
@@ -84,25 +89,12 @@ func main() {
 		}
 		cr.client = client
 
-		var config string
-		var err error
-		if c.String("config") == "" {
-			config, err = createConfigFile()
-			if err != nil {
-				return err
-			}
-		} else {
-			config = c.String("config")
-		}
-
-		buf, err := ioutil.ReadFile(config)
+		file, err := readOrCreateConfigFile(c)
 		if err != nil {
 			return err
 		}
-		file := &configFile{}
-		err = toml.Unmarshal(buf, file)
-		if err != nil {
-			return err
+		if file == nil {
+			return nil
 		}
 		var f func(string, *http.Response)
 		if c.String("selector") != "" {
@@ -112,7 +104,7 @@ func main() {
 		}
 		cr.crawl(file.Urls, f, c.Int("depth"))
 		if len(cr.errors) > 0 {
-			return &multipleError{ errors: cr.errors }
+			return &multipleError{errors: cr.errors}
 		}
 		return nil
 	}
@@ -130,10 +122,10 @@ type Crawler struct {
 
 func NewCrawler() *Crawler {
 	c := &Crawler{
-		wg: new(sync.WaitGroup),
-		m:  new(sync.Mutex),
+		wg:           new(sync.WaitGroup),
+		m:            new(sync.Mutex),
 		accessedUrls: make(map[string]struct{}),
-		errors: []error{},
+		errors:       []error{},
 	}
 	return c
 }
@@ -186,7 +178,7 @@ func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
 	c.m.Unlock()
 }
 
-func (c *Crawler) printWithSelector(selector string, pickType string, pickValue string) func(string, *http.Response){
+func (c *Crawler) printWithSelector(selector string, pickType string, pickValue string) func(string, *http.Response) {
 	return func(url string, resp *http.Response) {
 		c.m.Lock()
 		printWithSelector(selector, pickType, pickValue, url, resp)
@@ -200,7 +192,7 @@ func printWithSelector(selector string, pickType string, pickValue string, url s
 		var text string
 		if pickType == "text" {
 			text = s.Text()
-		} else if pickType == "Attr" {
+		} else if pickType == "attr" {
 			text, _ = s.Attr(pickValue)
 		}
 		fmt.Println(text)
@@ -243,13 +235,13 @@ func getLinks(res *http.Response) ([]string, error) {
 	return urls, nil
 }
 
-func createConfigFile() (string, error) {
+func createConfigFile() error {
 	dir, err := configDir()
 	if err != nil {
-		return "", err
+		return err
 	}
 	if err = os.MkdirAll(dir, 0700); err != nil {
-		return "", err
+		return err
 	}
 	config := filepath.Join(dir, "config.toml")
 	if _, err := os.Stat(config); err != nil {
@@ -258,12 +250,14 @@ func createConfigFile() (string, error) {
 		fmt.Println("Do you create configfile in " + config + "?(y/N): ")
 		answer, _ := reader.ReadString('\n')
 		if answer == "y" || answer == "Y" {
-			fmt.Println("Input your sample url: ")
-			url, _ := reader.ReadString('\n')
-			ioutil.WriteFile(config, []byte("urls = [\"" + url + "\"]"), 0644)
+			err = ioutil.WriteFile(config, []byte("urls = [\"https://example.com\"]"), 0644)
+			if err != nil {
+				return err
+			}
+			fmt.Println("successful to create config file.")
 		}
 	}
-	return config, nil
+	return nil
 }
 
 func configDir() (string, error) {
@@ -285,4 +279,44 @@ func (e *multipleError) Error() string {
 		errorStrings = append(errorStrings, err.Error())
 	}
 	return strings.Join(errorStrings, "\n")
+}
+
+func readOrCreateConfigFile(c *cli.Context) (*configFile, error) {
+	var config string
+	var err error
+	if c.String("config") == "" {
+		if err = createConfigFile(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	} else {
+		config = c.String("config")
+	}
+
+	buf, err := ioutil.ReadFile(config)
+	if err != nil {
+		return nil, err
+	}
+	file := &configFile{}
+	if err = toml.Unmarshal(buf, file); err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func validate(c *cli.Context) error {
+	pickType := map[string]bool{
+		"text": true,
+		"attr": true,
+	}
+	if pickType[c.String("pick-type")] {
+		return errors.New("Invalid pick-type. please set 'text' or 'attr'")
+	}
+	if c.String("selector") != "" && c.String("pick-type") == "" {
+		return errors.New("if you set selector option, please set pick-type option too")
+	}
+	if c.String("pick-type") == "attr" && c.String("attribute") == "" {
+		return errors.New("if your set 'attr' to pick-type option, please set attribute")
+	}
+	return nil
 }
