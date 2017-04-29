@@ -1,6 +1,7 @@
 #!/bin/bash
 
 NAME="gocrawsan"
+BIN_NAME="goc"
 VERSION="0.1.0"
 BIN_PREFIX="/usr/local"
 COMP_PREFIX="/usr/local/share/zsh/site-functions"
@@ -49,13 +50,13 @@ cd $TMP_DIR
 curl -sL -O ${BINARY}
 
 tar xzf ${ARCHIVE_FILE}
-mv ${OS}-${ARCH}/${NAME} ${BIN_PREFIX}/bin/${NAME}
-chmod +x ${PREFIX}/bin/${NAME}
+mv ${OS}-${ARCH}/${BIN_NAME} ${BIN_PREFIX}/bin/${BIN_NAME}
+chmod +x ${BIN_PREFIX}/bin/${BIN_NAME}
 if [ -d ${COMP_PREFIX} ]; then
   echo "install zsh completion?(y/N): "
   read ln;
   if [ "${ln}" == "y" ]; then
-    mv ${OS}-${ARCH}/_${NAME} ${COMP_PREFIX}/_${NAME}
+    mv ${OS}-${ARCH}/_${BIN_NAME} ${COMP_PREFIX}/_${BIN_NAME}
   fi
 fi
 
