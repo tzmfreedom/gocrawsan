@@ -49,6 +49,18 @@ func main() {
 		cli.BoolFlag{
 			Name: "no-redirect",
 		},
+		cli.StringFlag{
+			Name: "selector",
+		},
+		cli.StringFlag{
+			Name: "pick-type",
+		},
+		cli.StringFlag{
+			Name: "attribute",
+		},
+		cli.BoolFlag{
+			Name: "no-error",
+		},
 		cli.IntFlag{
 			Name: "timeout",
 		},
@@ -92,9 +104,15 @@ func main() {
 		if err != nil {
 			return err
 		}
+		var f func(string, *http.Response)
+		if c.String("selector") != "" {
+			f = cr.printWithSelector(c.String("selector"), c.String("pick-type"), c.String("attribute"))
+		} else {
+			f = cr.printHttpStatus
+		}
 		cr.crawl(file.Urls, f, c.Int("depth"))
 		if len(cr.errors) > 0 {
-			return cr.errors[0]
+			return &multipleError{ errors: cr.errors }
 		}
 		return nil
 	}
@@ -131,7 +149,7 @@ func (c *Crawler) crawl(urls []string, f func(string, *http.Response), depth int
 		c.m.Unlock()
 
 		c.wg.Add(1)
-		go c.getUrl(url, c.printHttpStatus, depth)
+		go c.getUrl(url, f, depth)
 	}
 	c.wg.Wait()
 }
@@ -166,6 +184,27 @@ func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
 		fmt.Println(resp.Status)
 	}
 	c.m.Unlock()
+}
+
+func (c *Crawler) printWithSelector(selector string, pickType string, pickValue string) func(string, *http.Response){
+	return func(url string, resp *http.Response) {
+		c.m.Lock()
+		printWithSelector(selector, pickType, pickValue, url, resp)
+		c.m.Unlock()
+	}
+}
+
+func printWithSelector(selector string, pickType string, pickValue string, url string, resp *http.Response) {
+	doc, _ := goquery.NewDocumentFromResponse(resp)
+	doc.Find(selector).Each(func(_ int, s *goquery.Selection) {
+		var text string
+		if pickType == "text" {
+			text = s.Text()
+		} else if pickType == "Attr" {
+			text, _ = s.Attr(pickValue)
+		}
+		fmt.Println(text)
+	})
 }
 
 func (c *Crawler) accessToNext(resp *http.Response, f func(string, *http.Response), d int) error {
@@ -234,4 +273,16 @@ func configDir() (string, error) {
 	}
 	dir := filepath.Join(home, ".config", "gocrawsan")
 	return dir, nil
+}
+
+type multipleError struct {
+	errors []error
+}
+
+func (e *multipleError) Error() string {
+	errorStrings := []string{}
+	for _, err := range e.errors {
+		errorStrings = append(errorStrings, err.Error())
+	}
+	return strings.Join(errorStrings, "\n")
 }
