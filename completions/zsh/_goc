@@ -1,0 +1,11 @@
+#compdef goc
+
+_arguments {-h,--help}'[show help]' \
+  '--config[config file]: :' \
+  '--no-redirect[no redirect if returned 30x status]::' \
+  '--useragent[crawler user agent]::' \
+  '--selector[selector for crawler action]::' \
+  '--pick-type[pick type for crawler action]::' \
+  '--attribute[attribute for crawler action]::' \
+  '--timeout[timeout for http request]::' \
+  '--depth[crawling depth]::'
