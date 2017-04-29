@@ -54,7 +54,7 @@ func main() {
 			Name: "selector, S",
 		},
 		cli.StringFlag{
-			Name: "pick-type, P",
+			Name: "extract-type, E",
 		},
 		cli.StringFlag{
 			Name: "attribute, A",
@@ -96,7 +96,7 @@ func main() {
 		}
 		var f func(string, *http.Response)
 		if c.String("selector") != "" {
-			f = cr.printWithSelector(c.String("selector"), c.String("pick-type"), c.String("attribute"))
+			f = cr.printWithSelector(c.String("selector"), c.String("extract-type"), c.String("attribute"))
 		} else {
 			f = cr.printHttpStatus
 		}
@@ -312,14 +312,14 @@ func validate(c *cli.Context) error {
 		"text": true,
 		"attr": true,
 	}
-	if c.String("pick-type") != "" && !pickType[c.String("pick-type")] {
-		return errors.New("Invalid pick-type. please set 'text' or 'attr'")
+	if c.String("extract-type") != "" && !pickType[c.String("extract-type")] {
+		return errors.New("Invalid extract-type. please set 'text' or 'attr'")
 	}
-	if c.String("selector") != "" && c.String("pick-type") == "" {
-		return errors.New("if you set selector option, please set pick-type option too")
+	if c.String("selector") != "" && c.String("extract-type") == "" {
+		return errors.New("if you set selector option, please set extract-type option too")
 	}
-	if c.String("pick-type") == "attr" && c.String("attribute") == "" {
-		return errors.New("if your set 'attr' to pick-type option, please set attribute")
+	if c.String("extract-type") == "attr" && c.String("attribute") == "" {
+		return errors.New("if your set 'attr' to extract-type option, please set attribute")
 	}
 	return nil
 }
