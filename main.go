@@ -61,17 +61,6 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) error {
-		var config string
-		var err error
-		if c.String("config") == "" {
-			config, err = createConfigFile()
-			if err != nil {
-				return err
-			}
-		} else {
-			config = c.String("config")
-		}
-
 		cr := NewCrawler()
 		cr.useragent = c.String("useragent")
 		client := &http.Client{}
@@ -83,6 +72,17 @@ func main() {
 		}
 		cr.client = client
 
+		var config string
+		var err error
+		if c.String("config") == "" {
+			config, err = createConfigFile()
+			if err != nil {
+				return err
+			}
+		} else {
+			config = c.String("config")
+		}
+
 		buf, err := ioutil.ReadFile(config)
 		if err != nil {
 			return err
@@ -92,7 +92,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		cr.crawling(file.Urls, c.Int("depth"))
+		cr.crawl(file.Urls, f, c.Int("depth"))
 		if len(cr.errors) > 0 {
 			return cr.errors[0]
 		}
@@ -120,7 +120,7 @@ func NewCrawler() *Crawler {
 	return c
 }
 
-func (c *Crawler) crawling(urls []string, depth int) {
+func (c *Crawler) crawl(urls []string, f func(string, *http.Response), depth int) {
 	for _, url := range urls {
 		c.m.Lock()
 		if _, ok := c.accessedUrls[url]; ok {
