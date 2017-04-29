@@ -7,8 +7,27 @@ BIN_PREFIX="/usr/local"
 COMP_PREFIX="/usr/local/share/zsh/site-functions"
 GITHUB_USER="tzmfreedom"
 TMP_DIR="/tmp"
+ZSH_COMPLETION=""
 
 set -ue
+
+function parse_options() {
+  for OPT in "$@"
+  do
+    case "$OPT" in
+      "--zsh-completion" )
+        ZSH_COMPLETION="t"
+        ;;
+      -* )
+        echo "$PROGRAM: illegal option -- '$(echo $1 | sed 's/^-*//')'" 1>&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
+}
+
+parse_options $@
 
 # check OS and architecture
 UNAME=$(uname -s)
@@ -42,7 +61,6 @@ elif [ "${UNAME}" = "Linux" ] ; then
   fi
 fi
 
-
 ARCHIVE_FILE=${NAME}-${VERSION}-${OS}-${ARCH}.tar.gz
 BINARY="https://github.com/${GITHUB_USER}/${NAME}/releases/download/v${VERSION}/${ARCHIVE_FILE}"
 
@@ -53,9 +71,7 @@ tar xzf ${ARCHIVE_FILE}
 mv ${OS}-${ARCH}/${BIN_NAME} ${BIN_PREFIX}/bin/${BIN_NAME}
 chmod +x ${BIN_PREFIX}/bin/${BIN_NAME}
 if [ -d ${COMP_PREFIX} ]; then
-  echo "install zsh completion?(y/N): "
-  read ln;
-  if [ "${ln}" == "y" ]; then
+  if [ "${ZSH_COMPLETION}" == "t" ]; then
     mv ${OS}-${ARCH}/_${BIN_NAME} ${COMP_PREFIX}/_${BIN_NAME}
   fi
 fi

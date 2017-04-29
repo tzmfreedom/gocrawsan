@@ -5,6 +5,14 @@ Simple web crawler with golang(WIP)
 ## Install
 
 ```bash
+$ curl -sL http://install.freedom-man.com/goc.sh | bash
+```
+if you want to install zsh completion for gocrawsan, add --zsh-completion option
+```bash
+$ curl -sL http://install.freedom-man.com/goc.sh | bash -s -- --zsh-completion
+```
+
+```bash
 $ go get github.com/tzmfreedom/gocrawsan
 ```
 
@@ -45,6 +53,6 @@ urls = ["https://www.google.co.jp", "https://www.example.com"]
 
 run following command
 ```
-$ gocrawsan
+$ goc
 ```
 
