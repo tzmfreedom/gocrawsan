@@ -245,8 +245,9 @@ func createConfigFile() (string, error) {
 	if _, err := os.Stat(config); err != nil {
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Println("Do you create configfile in " + config + "?(y/N): ")
+		fmt.Print("Do you create configfile in " + config + "?(y/N): ")
 		answer, _ := reader.ReadString('\n')
+		answer = strings.Replace(answer, "\n", "", -1)
 		if answer == "y" || answer == "Y" {
 			err = ioutil.WriteFile(config, []byte("urls = [\"https://example.com\"]"), 0644)
 			if err != nil {
@@ -254,6 +255,7 @@ func createConfigFile() (string, error) {
 			}
 			fmt.Println("successful to create config file.")
 		}
+		return "", nil
 	}
 	return config, nil
 }
