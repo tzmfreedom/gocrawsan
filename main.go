@@ -51,26 +51,24 @@ func main() {
 			Name: "no-redirect",
 		},
 		cli.StringFlag{
-			Name: "selector",
+			Name: "selector, S",
 		},
 		cli.StringFlag{
-			Name: "pick-type",
+			Name: "pick-type, P",
 		},
 		cli.StringFlag{
-			Name: "attribute",
+			Name: "attribute, A",
 		},
 		cli.BoolFlag{
 			Name: "no-error",
 		},
 		cli.IntFlag{
 			Name: "timeout",
+			Value: 10,
 		},
 		cli.IntFlag{
-			Name:  "depth",
+			Name:  "depth, D",
 			Value: 1,
-		},
-		cli.BoolFlag{
-			Name: "debug, D",
 		},
 	}
 	app.Action = func(c *cli.Context) error {
