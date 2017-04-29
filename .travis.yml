@@ -1,6 +1,8 @@
 language: go
 install:
 - go get -t ./...
+script:
+- make test
 before_deploy:
 - make cross-build
 - make dist
