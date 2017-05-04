@@ -63,7 +63,7 @@ func main() {
 			Name: "no-error",
 		},
 		cli.IntFlag{
-			Name: "timeout",
+			Name:  "timeout",
 			Value: 10,
 		},
 		cli.IntFlag{
@@ -129,7 +129,11 @@ func NewCrawler() *Crawler {
 }
 
 func (c *Crawler) crawl(urls []string, f func(string, *http.Response), depth int) {
+	r := regexp.MustCompile(`^((https|http)://(.*)|/.*)`)
 	for _, url := range urls {
+		if !r.MatchString(url) {
+			continue
+		}
 		c.m.Lock()
 		if _, ok := c.accessedUrls[url]; ok {
 			c.m.Unlock()
@@ -205,7 +209,11 @@ func (c *Crawler) accessToNext(resp *http.Response, f func(string, *http.Respons
 	if err != nil {
 		return err
 	}
+	r := regexp.MustCompile(`^((https|http)://(.*)|/.*)`)
 	for _, link := range links {
+		if !r.MatchString(link) {
+			continue
+		}
 		c.m.Lock()
 		if _, ok := c.accessedUrls[link]; ok {
 			c.m.Unlock()
@@ -323,4 +331,3 @@ func validate(c *cli.Context) error {
 	}
 	return nil
 }
-
