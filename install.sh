@@ -2,7 +2,7 @@
 
 NAME="gocrawsan"
 BIN_NAME="goc"
-VERSION="0.1.0"
+VERSION="0.1.1"
 BIN_PREFIX="/usr/local"
 COMP_PREFIX="/usr/local/share/zsh/site-functions"
 GITHUB_USER="tzmfreedom"
