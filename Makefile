@@ -32,10 +32,15 @@ dist-clean: clean
 	@rm -f $(NAME).tar.gz
 
 .PHONY: build
-build:
+format: import
 	-@goimports -w .
 	@gofmt -w .
-	@go build $(LDFLAGS)
+
+.PHONY: import
+import:
+ifeq ($(shell command -v goimports 2> /dev/null),)
+	go get golang.org/x/tools/cmd/goimports
+endif
 
 .PHONY: cross-build
 cross-build: deps
@@ -56,8 +61,8 @@ endif
 deps: glide
 	glide install
 
-.PHONY: bin/$(COMMAND_NAME) 
-bin/$(COMMAND_NAME): $(SRCS)
+.PHONY: bin/$(COMMAND_NAME)
+bin/$(COMMAND_NAME): $(SRCS) format
 	go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o bin/$(COMMAND_NAME) 
 
 .PHONY: dist
