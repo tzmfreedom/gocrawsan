@@ -37,7 +37,7 @@ GLOBAL OPTIONS:
    --config value, -C value
    --no-redirect
    --selector value, -S value
-   --pick-type value, -P value
+   --extract-type value, -P value
    --attribute value, -A value
    --no-error
    --timeout value              (default: 10)
@@ -77,12 +77,12 @@ Additionaly, gocrawsan can extract element from html document by css selector.
 
 This command extract "href" attribute on "a" tag.
 ```bash
-$ goc --selector a --pick-type attr --attribute href
+$ goc --selector a --extract-type attr --attribute href
 ```
 
-If you want to text value, set text to pick-type option.
+If you want to text value, set text to extract-type option.
 ```bash
-$ goc --selector a --pick-type text
+$ goc --selector a --extract-type text
 ```
 
 ### Other Option

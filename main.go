@@ -180,22 +180,22 @@ func (c *Crawler) printHttpStatus(url string, resp *http.Response) {
 	c.m.Unlock()
 }
 
-func (c *Crawler) printWithSelector(selector string, pickType string, pickValue string) func(string, *http.Response) {
+func (c *Crawler) printWithSelector(selector string, extractType string, extractValue string) func(string, *http.Response) {
 	return func(url string, resp *http.Response) {
 		c.m.Lock()
-		printWithSelector(selector, pickType, pickValue, url, resp)
+		printWithSelector(selector, extractType, extractValue, url, resp)
 		c.m.Unlock()
 	}
 }
 
-func printWithSelector(selector string, pickType string, pickValue string, url string, resp *http.Response) {
+func printWithSelector(selector string, extractType string, extractValue string, url string, resp *http.Response) {
 	doc, _ := goquery.NewDocumentFromResponse(resp)
 	doc.Find(selector).Each(func(_ int, s *goquery.Selection) {
 		var text string
-		if pickType == "text" {
+		if extractType == "text" {
 			text = s.Text()
-		} else if pickType == "attr" {
-			text, _ = s.Attr(pickValue)
+		} else if extractType == "attr" {
+			text, _ = s.Attr(extractValue)
 		}
 		fmt.Println(text)
 	})
@@ -316,11 +316,11 @@ func readOrCreateConfigFile(c *cli.Context) (*configFile, error) {
 }
 
 func validate(c *cli.Context) error {
-	pickType := map[string]bool{
+	extractType := map[string]bool{
 		"text": true,
 		"attr": true,
 	}
-	if c.String("extract-type") != "" && !pickType[c.String("extract-type")] {
+	if c.String("extract-type") != "" && !extractType[c.String("extract-type")] {
 		return errors.New("Invalid extract-type. please set 'text' or 'attr'")
 	}
 	if c.String("selector") != "" && c.String("extract-type") == "" {
