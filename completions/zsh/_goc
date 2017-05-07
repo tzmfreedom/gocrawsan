@@ -1,11 +1,20 @@
 #compdef goc
 
-_arguments {-h,--help}'[show help]' \
-  '--config[config file]: :' \
-  '--no-redirect[no redirect if returned 30x status]::' \
-  '--useragent[crawler user agent]::' \
-  '--selector[selector for crawler action]::' \
-  '--pick-type[pick type for crawler action]::' \
-  '--attribute[attribute for crawler action]::' \
-  '--timeout[timeout for http request]::' \
-  '--depth[crawling depth]::'
+function _goc_tags() {
+  _values '' 'a' 'div' 'ul' 'li' 'h1' 'h2' 'h3' 'title' 'p' 'span' 'img'
+}
+ 
+function _goc_attributes() {
+  _values '' 'class' 'id' 'href' 'src' 'data-'
+}
+
+_arguments '(- *)'{-h,--help}'[show help]' \
+  '--config[config file]: :_files' \
+  '--no-redirect[no redirect if returned 30x status]: :' \
+  '--useragent[crawler user agent]: :' \
+  '--selector[selector for crawler action]: :_goc_tags' \
+  '--extrace-type[pick type for crawler action]: :(attr text)' \
+  '--attribute[attribute for crawler action]: :_goc_attributes' \
+  '--timeout[timeout for http request]: :' \
+  '--depth[crawling depth]: :'
+
